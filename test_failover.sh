@@ -16,8 +16,7 @@ echo "Expected Recovery:  ~2s (2 * 1s)"
 echo "---------------------------------------"
 
 function get_server() {
-    # Added core connect_timeout to psql itself to prevent hanging
-    psql -h $HAPROXY_HOST -p $HAPROXY_PORT -U $DB_USER -d $DB_NAME -t -c "SELECT inet_server_addr();" -c "connect_timeout=1" 2>/dev/null | xargs
+    psql -h $HAPROXY_HOST -p $HAPROXY_PORT -U $DB_USER -d $DB_NAME -t -c "SELECT inet_server_addr();" 2>/dev/null | xargs
 }
 
 echo "1. Current status (Normal):"
@@ -25,13 +24,13 @@ for i in {1..3}; do
     echo "  Connected to: $(get_server)"
 done
 
-echo "\n2. Killing replica1..."
+echo "\n2. Stopping replica1..."
 docker kill replica1 > /dev/null
 START_TIME=$(date +%s)
 
 echo "Waiting for HAProxy to detect failure..."
 while true; do
-    LOOP_START=$(date +%s)
+    # Check 10 times. If replica1 is found even once, it's still in the pool.
     FOUND_STILL_UP=0
     for j in {1..10}; do
         CURRENT_SERVER=$(get_server)
@@ -47,9 +46,7 @@ while true; do
         echo "SUCCESS: replica1 removed from pool in ~${DIFF} seconds."
         break
     fi
-    CUR_TIME=$(date +%s)
-    ELAPSED=$((CUR_TIME - START_TIME))
-    echo -n "($ELAPSED s)"
+    echo -n "."
     sleep 0.1
 done
 
