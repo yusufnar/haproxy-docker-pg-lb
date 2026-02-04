@@ -1,5 +1,7 @@
 import os
 import time
+import datetime
+import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import psycopg2
 
@@ -9,11 +11,17 @@ DB_PASS = os.environ.get('POSTGRES_PASSWORD', 'postgres')
 MAX_LAG_SECONDS = 10
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
+    def log_debug(self, message):
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+        print(f"[{timestamp}] {message}", flush=True)
+
     def do_GET(self):
         # Extract target host from path (e.g., /replica1)
         target_host = self.path.strip('/')
         if not target_host or target_host == "":
             target_host = "replica1" # Default to replica1 if no path
+
+        self.log_debug(f"Request started for host: {target_host}")
 
         try:
             conn = psycopg2.connect(
@@ -23,6 +31,7 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
                 host=target_host,
                 connect_timeout=1
             )
+            self.log_debug("Opening cursor...")
             cur = conn.cursor()
             
             # All replication logic is handled in SQL:
@@ -52,15 +61,18 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.end_headers()
                 self.wfile.write(f"OK - Host: {target_host}, is_sync: {is_sync}, lag: {lag_s}s, real_lag: {real_lag_s}s".encode())
+                self.log_debug(f"Request finished: 200 OK (real_lag: {real_lag_s}s)")
             else:
                 self.send_response(503)
                 self.end_headers()
                 self.wfile.write(f"Service Unavailable - Host: {target_host}, is_sync: {is_sync}, lag: {lag_s}s, real_lag: {real_lag_s}s".encode())
+                self.log_debug(f"Request finished: 503 Service Unavailable (real_lag: {real_lag_s}s)")
 
         except Exception as e:
             self.send_response(503)
             self.end_headers()
             self.wfile.write(f"Service Unavailable - Host: {target_host}, Error: {str(e)}".encode())
+            self.log_debug(f"Request finished: 503 Exception ({str(e)})")
 
     def log_message(self, format, *args):
         return
