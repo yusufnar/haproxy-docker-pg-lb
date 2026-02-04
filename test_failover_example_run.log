@@ -1,0 +1,35 @@
+haproxy-docker-pg-lb % ./test_failover.sh
+--- HAProxy Failover & Recovery Test ---
+Check settings: inter 1s, fall 3, rise 2
+Expected Detection: ~3s (3 * 1s)
+Expected Recovery:  ~2s (2 * 1s)
+---------------------------------------
+[15:27:01] 1. Current status (Normal):
+[15:27:01]   Connected to: 192.168.155.4
+[15:27:01]   Connected to: 192.168.155.3
+[15:27:01]   Connected to: 192.168.155.4
+
+[15:27:01] 2. Killing replica1...
+[15:27:01] Replica1 killed at: 15:27:01
+[15:27:01] Waiting for HAProxy to detect failure...
+[15:27:01] Connected to: 192.168.155.3 (Elapsed: 0s)
+[15:27:05] Connected to: 192.168.155.3 (Elapsed: 1s)
+[15:27:08] Connected to: 192.168.155.3 (Elapsed: 4s)
+[15:27:09] Connected to: 192.168.155.3 (Elapsed: 8s)
+[15:27:09] Connected to: 192.168.155.3 (Elapsed: 8s)
+[15:27:10] SUCCESS: replica1 removed from pool in ~9 seconds.
+
+[15:27:10] 3. Starting replica1...
+[15:27:10] Replica1 started at: 15:27:10
+[15:27:10] Waiting for HAProxy to restore replica1...
+[15:27:10] Still waiting for replica1... (0s)
+[15:27:11] Still waiting for replica1... (1s)
+[15:27:13] Still waiting for replica1... (3s)
+[15:27:14] Still waiting for replica1... (4s)
+[15:27:15] Still waiting for replica1... (5s)
+[15:27:16] SUCCESS: replica1 restored to pool in ~6 seconds.
+
+[15:27:16] --- Test Completed ---
+[15:27:16]   Connected to: 192.168.155.3
+[15:27:16]   Connected to: 192.168.155.4
+[15:27:16]   Connected to: 192.168.155.3
