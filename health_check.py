@@ -21,7 +21,7 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
                 user=DB_USER,
                 password=DB_PASS,
                 host=target_host,
-                connect_timeout=3
+                connect_timeout=2
             )
             cur = conn.cursor()
             
