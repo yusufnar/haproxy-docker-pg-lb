@@ -10,9 +10,9 @@ export PGPASSWORD="postgres"
 REPLICA1_IP="192.168.155.4"
 
 echo "--- HAProxy Failover & Recovery Test ---"
-echo "Check settings: inter 1s, fall 3, rise 2"
-echo "Expected Detection: ~3s (3 * 1s)"
-echo "Expected Recovery:  ~2s (2 * 1s)"
+echo "Check settings: inter 2s, fall 3, rise 2"
+echo "Expected Detection: ~6s (3 * 2s)"
+echo "Expected Recovery:  ~4s (2 * 2s)"
 echo "---------------------------------------"
 
 function log() {
