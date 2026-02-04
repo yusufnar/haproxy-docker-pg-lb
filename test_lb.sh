@@ -8,6 +8,9 @@ HAPROXY_HOST="localhost"
 HAPROXY_PORT="5434"
 
 # Replica IPs (detected from docker inspect)
+REPLICA1_IP="192.168.155.4"
+REPLICA2_IP="192.168.155.3"
+
 # Number of queries from argument or default to 10
 NUM_QUERIES=${1:-10}
 

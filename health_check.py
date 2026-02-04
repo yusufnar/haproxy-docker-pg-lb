@@ -25,31 +25,39 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
             )
             cur = conn.cursor()
             
-            # Query to get replication lag in seconds
-            # If receive and replay LSN match, lag is effectively 0 even if last xact is old
-            cur.execute("""
-                SELECT 
-                    CASE 
-                        WHEN pg_last_wal_receive_lsn() = pg_last_wal_replay_lsn() THEN 0 
-                        ELSE EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())) 
-                    END;
-            """)
-            lag = cur.fetchone()[0]
+            cur = conn.cursor()
             
-            if lag is None:
-                lag = 0
+            # All replication logic is handled in SQL:
+            # is_sync: true if received and replayed LSNs match
+            # lag_s: time since last transaction replay in seconds (rounded to 1 decimal)
+            # real_lag_s: 0 if synced, otherwise actual lag
+            cur.execute("""
+                WITH stats AS (
+                    SELECT 
+                        pg_last_wal_receive_lsn() = pg_last_wal_replay_lsn() as is_sync,
+                        COALESCE(EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())), 0) as lag_s
+                )
+                SELECT 
+                    is_sync,
+                    ROUND(lag_s::numeric, 2) as lag_s,
+                    CASE WHEN is_sync THEN 0 ELSE ROUND(lag_s::numeric, 2) END as real_lag_s
+                FROM stats;
+            """)
+            row = cur.fetchone()
+            is_sync, lag_s, real_lag_s = row
             
             cur.close()
             conn.close()
 
-            if lag < MAX_LAG_SECONDS:
+            # We use real_lag_s for HAProxy health decision
+            if real_lag_s < MAX_LAG_SECONDS:
                 self.send_response(200)
                 self.end_headers()
-                self.wfile.write(f"OK - Host: {target_host}, Lag: {lag:.2f}s".encode())
+                self.wfile.write(f"OK - Host: {target_host}, is_sync: {is_sync}, lag: {lag_s}s, real_lag: {real_lag_s}s".encode())
             else:
                 self.send_response(503)
                 self.end_headers()
-                self.wfile.write(f"Service Unavailable - Host: {target_host}, Lag too high: {lag:.2f}s".encode())
+                self.wfile.write(f"Service Unavailable - Host: {target_host}, is_sync: {is_sync}, lag: {lag_s}s, real_lag: {real_lag_s}s".encode())
 
         except Exception as e:
             self.send_response(503)
