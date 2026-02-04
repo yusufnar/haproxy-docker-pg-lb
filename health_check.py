@@ -26,7 +26,14 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
             cur = conn.cursor()
             
             # Query to get replication lag in seconds
-            cur.execute("SELECT EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp()));")
+            # If receive and replay LSN match, lag is effectively 0 even if last xact is old
+            cur.execute("""
+                SELECT 
+                    CASE 
+                        WHEN pg_last_wal_receive_lsn() = pg_last_wal_replay_lsn() THEN 0 
+                        ELSE EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())) 
+                    END;
+            """)
             lag = cur.fetchone()[0]
             
             if lag is None:
