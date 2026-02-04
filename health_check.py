@@ -21,15 +21,13 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
                 user=DB_USER,
                 password=DB_PASS,
                 host=target_host,
-                connect_timeout=2
+                connect_timeout=1
             )
-            cur = conn.cursor()
-            
             cur = conn.cursor()
             
             # All replication logic is handled in SQL:
             # is_sync: true if received and replayed LSNs match
-            # lag_s: time since last transaction replay in seconds (rounded to 1 decimal)
+            # lag_s: time since last transaction replay in seconds (rounded to 2 decimals)
             # real_lag_s: 0 if synced, otherwise actual lag
             cur.execute("""
                 WITH stats AS (
@@ -70,7 +68,7 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
 def run(server_class=HTTPServer, handler_class=HealthCheckHandler, port=8008):
     server_address = ('', port)
     httpd = server_class(server_address, handler_class)
-    print(f"Starting centralized health check server on port {port}...")
+    print(f"Starting single-threaded health check server on port {port}...")
     httpd.serve_forever()
 
 if __name__ == "__main__":
