@@ -3,7 +3,12 @@ kind: Deployment
 metadata:
   name: haproxy
 spec:
-  replicas: 1
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: haproxy
@@ -12,6 +17,16 @@ spec:
       labels:
         app: haproxy
     spec:
+      # Spread pods across different nodes
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: haproxy
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: haproxy
         image: haproxy:latest
@@ -21,6 +36,24 @@ spec:
         - name: haproxy-config
           mountPath: /usr/local/etc/haproxy/haproxy.cfg
           subPath: haproxy.cfg
+        livenessProbe:
+          tcpSocket:
+            port: 5432
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 5432
+          initialDelaySeconds: 2
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
       volumes:
       - name: haproxy-config
         configMap:
@@ -31,10 +64,20 @@ kind: Service
 metadata:
   name: haproxy-service
 spec:
-  type: LoadBalancer # Or NodePort
+  type: LoadBalancer
   selector:
     app: haproxy
   ports:
   - port: 5432
     targetPort: 5432
     protocol: TCP
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: haproxy-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: haproxy
