@@ -8,19 +8,19 @@ The system consists of the following Docker containers:
 
 *   **primary**: The primary PostgreSQL instance (Read/Write).
 *   **replica1 & replica2**: Two PostgreSQL read replicas streaming from the primary.
-*   **healthcheck**: A custom Python service (using `psycopg2`) that monitors replication lag and sync status of the replicas.
-*   **haproxy**: A TCP load balancer that distributes read traffic to healthy replicas. It queries the `healthcheck` service to make routing decisions.
+*   **healthcheck**: A multi-threaded Python service that monitors replication lag and sync status.
+*   **haproxy**: A TCP load balancer that distributes read traffic to healthy replicas.
 
-### Why Custom Health Check?
-Standard TCP checks only verify if a port is open. This project uses a smart health check (`health_check.py`) that ensures:
-1.  The replica is actually a replica (not a split-brain primary).
-2.  The replication lag is within acceptable limits (default: <10s).
-3.  The replica is fully synchronized with the primary.
+### Key Features
+- **Smart Health Checks**: Verifies replication lag, sync status, and distinguishes primary from replicas.
+- **Primary Failback**: When ALL replicas are down, traffic automatically fails over to the primary.
+- **Multi-threaded Health Check**: Parallel health checks prevent one slow/dead replica from blocking others.
+- **Kubernetes Ready**: Includes K8s manifests for migration to Kubernetes with external RDS support.
 
 ## Prerequisites
 
-*   Docker
-*   Docker Compose
+*   Docker & Docker Compose
+*   (Optional) Kubernetes cluster for K8s deployment
 
 ## Getting Started
 
@@ -34,50 +34,57 @@ Standard TCP checks only verify if a port is open. This project uses a smart hea
     ```bash
     docker-compose up -d --build
     ```
-    *This starts the Primary, Replicas, Health Check service, and HAProxy.*
 
 ## Configuration
 
-*   **HAProxy Port**: `5434` (Exposed to host)
-*   **Primary DB Port**: `5431`
-*   **Database Name**: `appdb`
-*   **User/Password**: `postgres` / `postgres`
+| Setting | Value |
+|---------|-------|
+| HAProxy Port | `5434` |
+| Primary DB Port | `5431` |
+| Database Name | `appdb` |
+| User/Password | `postgres` / `postgres` |
 
 ### Key HAProxy Settings (`haproxy.cfg`)
-*   **`option redispatch`** & **`retries 3`**: Ensures seamless failover. If a replica fails during a request, HAProxy immediately retries another replica without returning an error to the client.
-*   **`http-check expect string OK`**: Forces HAProxy to read the full health check response body, preventing `ConnectionResetError`s.
+*   **`option redispatch` & `retries 3`**: Seamless failover during detection window.
+*   **`backup` on primary**: Traffic goes to primary only when all replicas are down.
+*   **`inter 3s fall 2 rise 2`**: Health check interval and thresholds.
 
 ## Scripts & Testing
 
-### 1. Load Balancing Test (`test_lb.sh`)
-Sends multiple queries to HAProxy to verify that traffic is distributed between replicas (Round Robin).
+| Script | Description |
+|--------|-------------|
+| `./test_lb.sh [n]` | Load balancing test - verifies round-robin distribution |
+| `./test_failover.sh` | Single replica failure & recovery test |
+| `./test_primary_failback.sh` | Both replicas down → failback to primary |
+| `./monitor_haproxy.sh` | Continuous monitoring (Ctrl+C to stop) |
+| `./profile_query.sh` | Query latency profiling |
+| `./test_lag.sh` | Replication lag simulation test |
+
+## Kubernetes Deployment
+
+Kubernetes manifests are in the `k8s/` directory for migrating HAProxy and Healthcheck to K8s with external RDS databases.
+
 ```bash
-./test_lb.sh [num_queries]
-# Example: ./test_lb.sh 20
+# Build and push healthcheck image
+./build_healthcheck.sh <your-registry>
+
+# Update k8s/external-services.yaml with RDS endpoints
+# Update k8s/secrets.yaml with credentials
+
+# Deploy
+kubectl apply -f k8s/
 ```
 
-### 2. Failover Test (`test_failover.sh`)
-Simulates a node failure by killing `replica1` and measuring how fast HAProxy detects and removes it from the pool. Also tests recovery time.
-```bash
-./test_failover.sh
-```
-
-### 3. Latency Profiling (`profile_query.sh`)
-Executes a query via HAProxy and reports:
-*   Which replica handled the request.
-*   Total client-side duration.
-*   Internal Postgres execution time (`\timing`).
-```bash
-./profile_query.sh
-```
-
-### 4. Replication Lag Test (`test_lag.sh`)
-(Optional) Intentionally creates lag on the primary to see if the health check correctly marks replicas as unhealthy.
+See `k8s/` directory for:
+- `configmaps.yaml` - HAProxy configuration
+- `secrets.yaml` - Database credentials
+- `external-services.yaml` - RDS endpoint mappings
+- `healthcheck.yaml` - Health check service deployment
+- `haproxy.yaml` - HAProxy deployment
 
 ## Troubleshooting
 
 **View Health Check Logs:**
-See detailed decision logs (lag time, sync status) from the custom health checker:
 ```bash
 docker logs -f healthcheck
 ```
@@ -85,4 +92,9 @@ docker logs -f healthcheck
 **View HAProxy Logs:**
 ```bash
 docker logs -f haproxy
+```
+
+**Check Container IPs:**
+```bash
+docker inspect replica1 --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
 ```
