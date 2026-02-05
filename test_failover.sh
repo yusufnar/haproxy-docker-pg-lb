@@ -7,7 +7,8 @@ DB_NAME="appdb"
 DB_USER="postgres"
 export PGPASSWORD="postgres"
 
-REPLICA1_IP="192.168.155.4"
+# Get replica1 IP dynamically from Docker
+REPLICA1_IP=$(docker inspect replica1 --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null)
 
 echo "--- HAProxy Failover & Recovery Test ---"
 echo "Check settings: inter 2s, fall 3, rise 2"

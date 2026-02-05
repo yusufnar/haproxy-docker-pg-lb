@@ -2,7 +2,7 @@ import os
 import time
 import datetime
 import sys
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 import psycopg2
 
 DB_NAME = os.environ.get('POSTGRES_DB', 'appdb')
@@ -94,10 +94,10 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         return
 
-def run(server_class=HTTPServer, handler_class=HealthCheckHandler, port=8008):
+def run(server_class=ThreadingHTTPServer, handler_class=HealthCheckHandler, port=8008):
     server_address = ('', port)
     httpd = server_class(server_address, handler_class)
-    print(f"Starting single-threaded health check server on port {port}...")
+    print(f"Starting multi-threaded health check server on port {port}...")
     httpd.serve_forever()
 
 if __name__ == "__main__":
