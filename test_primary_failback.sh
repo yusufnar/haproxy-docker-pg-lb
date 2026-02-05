@@ -7,7 +7,8 @@ DB_NAME="appdb"
 DB_USER="postgres"
 export PGPASSWORD="postgres"
 
-PRIMARY_IP="192.168.155.2"
+# Get primary IP dynamically from Docker
+PRIMARY_IP=$(docker inspect primary --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null)
 
 echo "--- HAProxy Full Replica Failure & Primary Failback Test ---"
 echo "This test kills BOTH replicas and verifies traffic fails over to primary."
