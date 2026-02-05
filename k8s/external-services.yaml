@@ -1,0 +1,37 @@
+# Service mapping for Primary DB
+apiVersion: v1
+kind: Service
+metadata:
+  name: primary
+spec:
+  type: ExternalName
+  externalName: primary-rds-endpoint.replace-me.com
+  ports:
+  - port: 5432
+    protocol: TCP
+
+---
+# Service mapping for Replica 1
+apiVersion: v1
+kind: Service
+metadata:
+  name: replica1
+spec:
+  type: ExternalName
+  externalName: replica1-rds-endpoint.replace-me.com
+  ports:
+  - port: 5432
+    protocol: TCP
+
+---
+# Service mapping for Replica 2
+apiVersion: v1
+kind: Service
+metadata:
+  name: replica2
+spec:
+  type: ExternalName
+  externalName: replica2-rds-endpoint.replace-me.com
+  ports:
+  - port: 5432
+    protocol: TCP

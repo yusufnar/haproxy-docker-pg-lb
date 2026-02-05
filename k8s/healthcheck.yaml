@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: healthcheck
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: healthcheck
+  template:
+    metadata:
+      labels:
+        app: healthcheck
+    spec:
+      containers:
+      - name: healthcheck
+        # User needs to build and push this image
+        image: your-registry/haproxy-healthcheck:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8008
+        env:
+        - name: POSTGRES_USER
+          value: "postgres" # Or use secret if needed
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DB
+          value: "appdb"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: healthcheck
+spec:
+  selector:
+    app: healthcheck
+  ports:
+  - port: 8008
+    targetPort: 8008
+    protocol: TCP

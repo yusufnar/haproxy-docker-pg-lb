@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: haproxy-config
+data:
+  haproxy.cfg: |
+    global
+        maxconn 100
+
+    defaults
+        mode tcp
+        timeout connect 3s
+        timeout client 1m
+        timeout server 1m
+
+    frontend pg_replica_frontend
+        bind *:5432
+        default_backend pg_replica_backend
+
+    backend pg_replica_backend
+        mode tcp
+        balance roundrobin
+        # Retry logic for seamless failover during detection window
+        option redispatch
+        retries 3
+        
+        # Option httpchk is used to check the health via the centralized healthcheck service
+        option httpchk
+        http-check connect port 8008 addr healthcheck
+        # uri-lf allows using log-format strings (like %[srv_name]) in the URI
+        http-check send meth GET uri-lf /%[srv_name]
+        http-check expect string OK
+        
+        # We rely on K8s DNS to resolve 'replica1' and 'replica2' to the ExternalName Services
+        server replica1 replica1:5432 check addr healthcheck port 8008 inter 2s fall 3 rise 2 weight 10
+        server replica2 replica2:5432 check addr healthcheck port 8008 inter 2s fall 3 rise 2 weight 10
