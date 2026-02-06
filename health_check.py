@@ -8,7 +8,7 @@ import psycopg2
 DB_NAME = os.environ.get('POSTGRES_DB', 'appdb')
 DB_USER = os.environ.get('POSTGRES_USER', 'postgres')
 DB_PASS = os.environ.get('POSTGRES_PASSWORD', 'postgres')
-MAX_LAG_SECONDS = 5
+MAX_LAG_SECONDS = 2
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def log_debug(self, message):
@@ -86,9 +86,9 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
                 self.log_debug(f"Request finished: 200 OK (primary, simple check)")
 
         except Exception as e:
-            self.send_response(503)
-            self.end_headers()
-            self.wfile.write(f"Service Unavailable - Host: {target_host}, Error: {str(e)}".encode())
+                self.send_response(503)
+                self.end_headers()
+                self.wfile.write(f"Service Unavailable - Host: {target_host}, Error: {str(e)}".encode())
             self.log_debug(f"Request finished: 503 Exception ({str(e)})")
 
     def log_message(self, format, *args):
