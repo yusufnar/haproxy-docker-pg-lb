@@ -70,40 +70,6 @@ while true; do
         END_TIME=$(date +%s)
         DIFF=$((END_TIME - START_TIME))
         log "SUCCESS: replica1 removed from pool in ~${DIFF} seconds at $(date +"%H:%M:%S")."
-        
-        # Check HAProxy logs for the actual DOWN event (after shutdown time)
-        echo ""
-        log "Checking HAProxy logs for DOWN event..."
-        # Convert to UTC for comparison with Docker logs (which use UTC)
-        SHUTDOWN_ISO=$(TZ=UTC date -r $START_TIME +"%Y-%m-%dT%H:%M:%S")
-        log "Looking for DOWN events after: $SHUTDOWN_ISO (UTC)"
-        
-        FOUND_DOWN_LOG=0
-        for attempt in {1..10}; do
-            # Get all DOWN logs for replica1
-            while IFS= read -r line; do
-                if [[ -n "$line" ]]; then
-                    # Extract timestamp from log (format: 2026-02-06T12:00:00.123456789Z)
-                    LOG_TIME=$(echo "$line" | awk '{print $1}' | cut -d'.' -f1)
-                    # log "Found log with timestamp: $LOG_TIME"
-                    # Compare timestamps (both in ISO format)
-                    if [[ "$LOG_TIME" > "$SHUTDOWN_ISO" ]] || [[ "$LOG_TIME" == "$SHUTDOWN_ISO" ]]; then
-                        log "HAProxy DOWN log: $line"
-                        FOUND_DOWN_LOG=1
-                        break 2
-                    else
-                        # log "Skipping old log: LOG_TIME=$LOG_TIME < SHUTDOWN_ISO=$SHUTDOWN_ISO"
-                    fi
-                fi
-            done < <(docker logs --timestamps haproxy 2>&1 | grep -i "replica1" | grep -i "down")
-            
-            log "Waiting for DOWN log... (attempt $attempt)"
-            sleep 0.5
-        done
-        
-        if [[ $FOUND_DOWN_LOG -eq 0 ]]; then
-            log "No DOWN log found for replica1 after shutdown time"
-        fi
         break
     fi
     log "Still seeing replica1 at ${ELAPSED}s. ($(date +'%H:%M:%S'))"
