@@ -8,7 +8,7 @@ import psycopg2
 DB_NAME = os.environ.get('POSTGRES_DB', 'appdb')
 DB_USER = os.environ.get('POSTGRES_USER', 'postgres')
 DB_PASS = os.environ.get('POSTGRES_PASSWORD', 'postgres')
-MAX_LAG_SECONDS = 10
+MAX_LAG_SECONDS = 5
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def log_debug(self, message):

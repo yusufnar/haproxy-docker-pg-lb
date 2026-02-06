@@ -44,6 +44,21 @@ services:
     depends_on:
       - primary
 
+  replica3:
+    image: postgres:17
+    container_name: replica3
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - PRIMARY_HOST=primary
+      - REPLICATION_USER=repl_user
+      - REPLICATION_PASSWORD=repl_password
+      - PGPASSWORD=repl_password
+    volumes:
+      - ./init-replica.sh:/init-replica.sh:ro
+    entrypoint: ["/bin/bash", "/init-replica.sh"]
+    depends_on:
+      - primary
+
   healthcheck:
     build:
       context: .
