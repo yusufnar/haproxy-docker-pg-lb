@@ -28,7 +28,7 @@ function log() {
 }
 
 # Function to find a log event after a given timestamp
-# Args: $1 = start_time (epoch), $2 = server_name, $3 = event_type (down/up)
+# Args: $1 = start_time (epoch), $2 = server_name, $3 = event_type (DOWN/UP)
 function find_haproxy_log_event() {
     local start_time=$1
     local server_name=$2
@@ -46,7 +46,7 @@ function find_haproxy_log_event() {
                     return 0
                 fi
             fi
-        done < <(docker logs --timestamps haproxy 2>&1 | grep -i "$server_name" | grep -i "$event_type")
+        done < <(docker logs --timestamps haproxy 2>&1 | grep -i "$server_name" | grep "$event_type")
         
         sleep 0.2
     done
@@ -64,7 +64,7 @@ SHUTDOWN_ISO=$(TZ=UTC date -r $START_TIME +"%Y-%m-%dT%H:%M:%S")
 log "Replica1 killed at: $(date -r $START_TIME +"%H:%M:%S") (UTC: $SHUTDOWN_ISO)"
 
 log "Waiting for HAProxy DOWN log..."
-DOWN_LOG=$(find_haproxy_log_event $START_TIME "replica1" "down")
+DOWN_LOG=$(find_haproxy_log_event $START_TIME "replica1" "is DOWN")
 if [[ -n "$DOWN_LOG" ]]; then
     END_TIME=$(date +%s)
     DIFF=$((END_TIME - START_TIME))
@@ -82,7 +82,7 @@ STARTUP_ISO=$(TZ=UTC date -r $START_TIME +"%Y-%m-%dT%H:%M:%S")
 log "Replica1 started at: $(date -r $START_TIME +"%H:%M:%S") (UTC: $STARTUP_ISO)"
 
 log "Waiting for HAProxy UP log..."
-UP_LOG=$(find_haproxy_log_event $START_TIME "replica1" "up")
+UP_LOG=$(find_haproxy_log_event $START_TIME "replica1" "is UP")
 if [[ -n "$UP_LOG" ]]; then
     END_TIME=$(date +%s)
     DIFF=$((END_TIME - START_TIME))

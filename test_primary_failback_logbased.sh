@@ -27,7 +27,7 @@ function log() {
 }
 
 # Function to find a log event after a given timestamp
-# Args: $1 = start_time (epoch), $2 = server_name, $3 = event_type (down/up)
+# Args: $1 = start_time (epoch), $2 = server_name, $3 = event_type (DOWN/UP)
 function find_haproxy_log_event() {
     local start_time=$1
     local server_name=$2
@@ -45,7 +45,7 @@ function find_haproxy_log_event() {
                     return 0
                 fi
             fi
-        done < <(docker logs --timestamps haproxy 2>&1 | grep -i "$server_name" | grep -i "$event_type")
+        done < <(docker logs --timestamps haproxy 2>&1 | grep -i "$server_name" | grep "$event_type")
         
         sleep 0.2
     done
@@ -66,7 +66,7 @@ SHUTDOWN_ISO=$(TZ=UTC date -r $START_TIME +"%Y-%m-%dT%H:%M:%S")
 log "Replicas killed at: $(date -r $START_TIME +"%H:%M:%S") (UTC: $SHUTDOWN_ISO)"
 
 log "Waiting for replica1 DOWN log..."
-DOWN_LOG1=$(find_haproxy_log_event $START_TIME "replica1" "down")
+DOWN_LOG1=$(find_haproxy_log_event $START_TIME "replica1" "is DOWN")
 if [[ -n "$DOWN_LOG1" ]]; then
     log "replica1 DOWN: $DOWN_LOG1"
 else
@@ -74,7 +74,7 @@ else
 fi
 
 log "Waiting for replica2 DOWN log..."
-DOWN_LOG2=$(find_haproxy_log_event $START_TIME "replica2" "down")
+DOWN_LOG2=$(find_haproxy_log_event $START_TIME "replica2" "is DOWN")
 if [[ -n "$DOWN_LOG2" ]]; then
     END_TIME=$(date +%s)
     DIFF=$((END_TIME - START_TIME))
@@ -97,7 +97,7 @@ STARTUP_ISO=$(TZ=UTC date -r $START_TIME +"%Y-%m-%dT%H:%M:%S")
 log "Replicas started at: $(date -r $START_TIME +"%H:%M:%S") (UTC: $STARTUP_ISO)"
 
 log "Waiting for replica1 UP log..."
-UP_LOG1=$(find_haproxy_log_event $START_TIME "replica1" "up")
+UP_LOG1=$(find_haproxy_log_event $START_TIME "replica1" "is UP")
 if [[ -n "$UP_LOG1" ]]; then
     log "replica1 UP: $UP_LOG1"
 else
@@ -105,7 +105,7 @@ else
 fi
 
 log "Waiting for replica2 UP log..."
-UP_LOG2=$(find_haproxy_log_event $START_TIME "replica2" "up")
+UP_LOG2=$(find_haproxy_log_event $START_TIME "replica2" "is UP")
 if [[ -n "$UP_LOG2" ]]; then
     END_TIME=$(date +%s)
     DIFF=$((END_TIME - START_TIME))
