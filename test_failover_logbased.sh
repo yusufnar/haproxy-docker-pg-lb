@@ -81,6 +81,11 @@ START_TIME=$(date +%s)
 STARTUP_ISO=$(TZ=UTC date -r $START_TIME +"%Y-%m-%dT%H:%M:%S")
 log "Replica1 started at: $(date -r $START_TIME +"%H:%M:%S") (UTC: $STARTUP_ISO)"
 
+# Insert a record to primary to trigger replication sync
+docker exec -e PGPASSWORD=$PGPASSWORD primary psql -U $DB_USER -d $DB_NAME -c \
+    "INSERT INTO ynar (info) VALUES ('failover test sync at $(date)');" > /dev/null 2>&1
+log "Inserted sync record to primary"
+
 log "Waiting for HAProxy UP log..."
 UP_LOG=$(find_haproxy_log_event $START_TIME "replica1" "is UP")
 if [[ -n "$UP_LOG" ]]; then

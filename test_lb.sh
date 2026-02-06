@@ -7,9 +7,10 @@ export PGPASSWORD="postgres"
 HAPROXY_HOST="localhost"
 HAPROXY_PORT="5434"
 
-# Replica IPs (detected from docker inspect)
-REPLICA1_IP="192.168.155.4"
-REPLICA2_IP="192.168.155.3"
+# Replica IPs (dynamically fetched from Docker)
+REPLICA1_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' replica1 2>/dev/null)
+REPLICA2_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' replica2 2>/dev/null)
+REPLICA3_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' replica3 2>/dev/null)
 
 # Number of queries from argument or default to 10
 NUM_QUERIES=${1:-10}
@@ -17,9 +18,10 @@ NUM_QUERIES=${1:-10}
 typeset -A counts
 counts[replica1]=0
 counts[replica2]=0
+counts[replica3]=0
 
 echo "--- Sending $NUM_QUERIES queries via HAProxy on port $HAPROXY_PORT ---"
-echo "Mapping IPs: $REPLICA1_IP -> replica1, $REPLICA2_IP -> replica2"
+echo "Mapping IPs: $REPLICA1_IP -> replica1, $REPLICA2_IP -> replica2, $REPLICA3_IP -> replica3"
 echo ""
 
 for i in {1..$NUM_QUERIES}
@@ -31,6 +33,8 @@ do
         SERVER_NAME="replica1"
     elif [[ "$SERVER_IP" == "$REPLICA2_IP" ]]; then
         SERVER_NAME="replica2"
+    elif [[ "$SERVER_IP" == "$REPLICA3_IP" ]]; then
+        SERVER_NAME="replica3"
     else
         SERVER_NAME="unknown ($SERVER_IP)"
     fi

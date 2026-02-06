@@ -82,6 +82,11 @@ docker start replica1 > /dev/null
 START_TIME=$(date +%s)
 log "Replica1 started at: $(date -r $START_TIME +"%H:%M:%S")"
 
+# Insert a record to primary to trigger replication sync
+docker exec -e PGPASSWORD=$PGPASSWORD primary psql -U $DB_USER -d $DB_NAME -c \
+    "INSERT INTO ynar (info) VALUES ('failover test sync at $(date)');" > /dev/null 2>&1
+log "Inserted sync record to primary"
+
 log "Waiting for HAProxy to restore replica1..."
 while true; do
     FOUND=0
