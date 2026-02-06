@@ -55,10 +55,14 @@ The system consists of the following Docker containers:
 |--------|-------------|
 | `./test_lb.sh [n]` | Load balancing test - verifies round-robin distribution |
 | `./test_failover.sh` | Single replica failure & recovery test |
+| `./test_failover_logbased.sh` | Log-based failover test with precise timing |
 | `./test_primary_failback.sh` | Both replicas down → failback to primary |
+| `./test_primary_failback_logbased.sh` | Log-based primary failback test |
 | `./monitor_haproxy.sh` | Continuous monitoring (Ctrl+C to stop) |
+| `./monitor_replication_lag.sh` | Continuous replication lag monitoring |
 | `./profile_query.sh` | Query latency profiling |
 | `./test_lag.sh` | Replication lag simulation test |
+| `./test_artificial_lag.sh` | Artificial lag injection test |
 
 ## Kubernetes Deployment
 
